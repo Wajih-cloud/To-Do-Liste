@@ -1,0 +1,143 @@
+import React, { useState, useEffect } from "react";
+import { Task } from "@/entities/Task";
+import { AnimatePresence, motion } from "framer-motion";
+import TaskCard from "../components/TaskCard";
+import TaskForm from "../components/TaskForm";
+import AddTaskButton from "../components/AddTaskButton";
+
+export default function Privat() {
+  const [tasks, setTasks] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  const loadTasks = async () => {
+    setLoading(true);
+    try {
+      const allTasks = await Task.filter({ category: "private", completed: false }, "-created_date");
+      setTasks(allTasks);
+    } catch (error) {
+      console.error("Fehler beim Laden der Aufgaben:", error);
+    }
+    setLoading(false);
+  };
+
+  const handleAddTask = async (taskData) => {
+    try {
+      await Task.create({
+        ...taskData,
+        category: "private",
+        completed: false
+      });
+      loadTasks();
+    } catch (error) {
+      console.error("Fehler beim Erstellen der Aufgabe:", error);
+    }
+  };
+
+  const handleToggleComplete = async (task) => {
+    try {
+      await Task.update(task.id, {
+        completed: !task.completed,
+        completed_date: !task.completed ? new Date().toISOString() : null
+      });
+      loadTasks();
+    } catch (error) {
+      console.error("Fehler beim Aktualisieren der Aufgabe:", error);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-indigo-50 p-4 md:p-8">
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-8">
+          <motion.h1 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-3xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-cyan-700 to-blue-700 bg-clip-text text-transparent"
+          >
+            Private Aufgaben
+          </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-gray-600 text-lg"
+          >
+            Verwalten Sie Ihre persönlichen To-Dos
+          </motion.p>
+        </div>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mb-8"
+        >
+          <AddTaskButton onClick={() => setShowForm(true)} />
+        </motion.div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-3xl p-6 animate-pulse">
+                <div className="h-6 bg-gray-200 rounded mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded mb-3 w-3/4"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+          >
+            <AnimatePresence>
+              {tasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onToggleComplete={handleToggleComplete}
+                />
+              ))}
+            </AnimatePresence>
+            
+            {tasks.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="col-span-full text-center py-16"
+              >
+                <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-r from-cyan-100 to-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-4xl">📝</span>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                  Keine privaten Aufgaben vorhanden
+                </h3>
+                <p className="text-gray-500">
+                  Fügen Sie Ihre erste Aufgabe hinzu, um loszulegen.
+                </p>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+
+        <AnimatePresence>
+          {showForm && (
+            <TaskForm
+              isOpen={showForm}
+              onClose={() => setShowForm(false)}
+              onSubmit={handleAddTask}
+              defaultCategory="private"
+            />
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
